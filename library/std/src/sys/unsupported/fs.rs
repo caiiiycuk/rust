@@ -6,7 +6,14 @@ use crate::path::{Path, PathBuf};
 use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
 
-pub struct File(!);
+use crate::io as std_io;
+
+#[path ="./memfs.rs"]
+mod memfs;
+
+pub struct File {
+    handle: memfs::Handle
+}
 
 pub struct FileAttr(!);
 
@@ -15,7 +22,14 @@ pub struct ReadDir(!);
 pub struct DirEntry(!);
 
 #[derive(Clone, Debug)]
-pub struct OpenOptions {}
+pub struct OpenOptions {
+    read: bool,
+    write: bool,
+    append: bool,
+    truncate: bool,
+    create: bool,
+    create_new: bool,
+}
 
 pub struct FilePermissions(!);
 
@@ -162,76 +176,124 @@ impl DirEntry {
 
 impl OpenOptions {
     pub fn new() -> OpenOptions {
-        OpenOptions {}
+        OpenOptions {
+            read: false,
+            write: false,
+            append: false,
+            truncate: false,
+            create: false,
+            create_new: false,
+        }
     }
 
-    pub fn read(&mut self, _read: bool) {}
-    pub fn write(&mut self, _write: bool) {}
-    pub fn append(&mut self, _append: bool) {}
-    pub fn truncate(&mut self, _truncate: bool) {}
-    pub fn create(&mut self, _create: bool) {}
-    pub fn create_new(&mut self, _create_new: bool) {}
+    pub fn read(&mut self, read: bool) {
+        self.read = read;
+    }
+    pub fn write(&mut self, write: bool) {
+        self.write = write;
+    }
+    pub fn append(&mut self, append: bool) {
+        self.append = append;
+    }
+    pub fn truncate(&mut self, truncate: bool) {
+        self.truncate = truncate;
+    }
+    pub fn create(&mut self, create: bool) {
+        self.create = create;
+    }
+    pub fn create_new(&mut self, create_new: bool) {
+        self.create_new = create_new;
+    }
 }
 
 impl File {
     pub fn open(_path: &Path, _opts: &OpenOptions) -> io::Result<File> {
-        unsupported()
+        let path = _path.to_str().expect("path is not utf8");
+        let handle = if _opts.create {
+            memfs::create(path).unwrap()
+        } else if _opts.read {
+            memfs::open(path).unwrap()
+        } else {
+            return Err(std_io::Error::new_const(std_io::ErrorKind::Unsupported,
+                &"Only read and create are supported"));
+        };
+
+        Ok(File {
+            handle
+        })
     }
 
     pub fn file_attr(&self) -> io::Result<FileAttr> {
-        self.0
+        Err(std_io::Error::new_const(std_io::ErrorKind::Unsupported,
+            &"File.file_attr is not supported on this platform"))
     }
 
     pub fn fsync(&self) -> io::Result<()> {
-        self.0
+        Err(std_io::Error::new_const(std_io::ErrorKind::Unsupported,
+            &"File.fsync is not supported on this platform"))
     }
 
     pub fn datasync(&self) -> io::Result<()> {
-        self.0
+        Err(std_io::Error::new_const(std_io::ErrorKind::Unsupported,
+            &"File.datasync is not supported on this platform"))
     }
 
     pub fn truncate(&self, _size: u64) -> io::Result<()> {
-        self.0
+        Err(std_io::Error::new_const(std_io::ErrorKind::Unsupported,
+            &"File.truncate is not supported on this platform"))
     }
 
     pub fn read(&self, _buf: &mut [u8]) -> io::Result<usize> {
-        self.0
+        match self.handle.read(_buf) {
+            Err(message) => Err(std_io::Error::new(std_io::ErrorKind::Other, message)),
+            Ok(x) => Ok(x)
+        }
     }
 
     pub fn read_vectored(&self, _bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        self.0
+        Err(std_io::Error::new_const(std_io::ErrorKind::Unsupported,
+            &"File.read_vectored is not supported on this platform"))
     }
 
     pub fn is_read_vectored(&self) -> bool {
-        self.0
+        false
     }
 
     pub fn write(&self, _buf: &[u8]) -> io::Result<usize> {
-        self.0
+        match self.handle.write(_buf) {
+            Err(message) => Err(std_io::Error::new(std_io::ErrorKind::Other, message)),
+            Ok(x) => Ok(x)
+        }
     }
 
     pub fn write_vectored(&self, _bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        self.0
+        Err(std_io::Error::new_const(std_io::ErrorKind::Unsupported,
+            &"File.write_vectored is not supported on this platform"))
     }
 
     pub fn is_write_vectored(&self) -> bool {
-        self.0
+        false
     }
 
     pub fn flush(&self) -> io::Result<()> {
-        self.0
+        Ok(())
     }
 
-    pub fn seek(&self, _pos: SeekFrom) -> io::Result<u64> {
-        self.0
+    pub fn seek(&self, pos: SeekFrom) -> io::Result<u64> {
+        match self.handle.seek(pos) {
+            Err(message) => Err(std_io::Error::new(std_io::ErrorKind::Other, message)),
+            Ok(x) => Ok(x)
+        }
     }
 
     pub fn duplicate(&self) -> io::Result<File> {
-        self.0
+        Err(std_io::Error::new_const(std_io::ErrorKind::Unsupported,
+            &"File.duplicate is not supported on this platform"))
     }
 
     pub fn set_permissions(&self, _perm: FilePermissions) -> io::Result<()> {
-        self.0
+        Err(std_io::Error::new_const(std_io::ErrorKind::Unsupported,
+            &"File.set_permissions is not supported on this platform"))
     }
 }
 
@@ -247,7 +309,9 @@ impl DirBuilder {
 
 impl fmt::Debug for File {
     fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0
+        let mut b = _f.debug_struct("File");
+        b.field("path", &self.handle.path);
+        b.finish()
     }
 }
 
