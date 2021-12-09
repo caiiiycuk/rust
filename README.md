@@ -14,7 +14,7 @@ Building can take long time, but if your host `x86_64-unknown-linux-gnu` then yo
 
 ## Building
 
-First you need to build rustc compiler it self, basically it can be done with this command:
+You need to build rustc compiler it self, basically it can be done with this command:
 
 ```
 ./x.py build -i --keep-stage 0 library/std --target wasm32-unknown-unknown --target x86_64-unknown-linux-gnu
