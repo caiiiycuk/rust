@@ -8,7 +8,7 @@ This branch adds in memory file system for `unknown` target. This is needed most
         .expect(&format!("Unable to write in {}", file));
 ``` 
 
-## Downloading
+## Pre-built binaries
 
 Building can take long time, but if your host `x86_64-unknown-linux-gnu` then you can download pre-built binaries in [Releases](https://github.com/caiiiycuk/rust-memfs/releases) section.
 
